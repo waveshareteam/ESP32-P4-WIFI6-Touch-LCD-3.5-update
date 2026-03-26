@@ -1,0 +1,177 @@
+{
+    "version": 1,
+    "OV5647": {
+        "adn": {
+            "bf": [
+                {
+                    "gain": 1,
+                    "param": {
+                        "level": 5,
+                        "matrix": [
+                            1, 2, 1,
+                            2, 4, 2,
+                            1, 2, 1
+                        ]
+                    }
+                },
+                {
+                    "gain": 4,
+                    "param": {
+                        "level": 7,
+                        "matrix": [
+                            1, 2, 1,
+                            2, 6, 2,
+                            1, 2, 1
+                        ]
+                    }
+                },
+                {
+                    "gain": 8,
+                    "param": {
+                        "level": 10,
+                        "matrix": [
+                            1, 2, 1,
+                            2, 10, 2,
+                            1, 2, 1
+                        ]
+                    }
+                }
+            ],
+            "demosaic": [
+                {
+                    "gain": 1,
+                    "gradient_ratio": 0.75
+                },
+                {
+                    "gain": 4,
+                    "gradient_ratio": 0.68
+                },
+                {
+                    "gain": 8,
+                    "gradient_ratio": 0.55
+                }
+            ]
+        },
+        "aen": {
+            "gamma": {
+                "use_gamma_param": true,
+                "luma_env": "ae.luma.avg",
+                "luma_min_step": 16.0,
+                "table": [
+                    {
+                        "luma": 30,
+                        "gamma_param": 0.52
+                    },
+                    {
+                        "luma": 60,
+                        "gamma_param": 0.64
+                    }
+                ]
+            },
+            "sharpen": [
+                {
+                    "gain": 1,
+                    "param": {
+                        "h_thresh": 56,
+                        "l_thresh": 20,
+                        "h_coeff": 0.425,
+                        "m_coeff": 0.45,
+                        "matrix": [
+                            1, 2, 1,
+                            2, 2, 2,
+                            1, 2, 1
+                        ]
+                    }
+                },
+                {
+                    "gain": 4,
+                    "param": {
+                        "h_thresh": 64,
+                        "l_thresh": 16,
+                        "h_coeff": 0.28,
+                        "m_coeff": 0.45,
+                        "matrix": [
+                            1, 1, 1,
+                            1, 2, 1,
+                            1, 1, 1
+                        ]
+                    }
+                },
+                {
+                    "gain": 8,
+                    "param": {
+                        "h_thresh": 76,
+                        "l_thresh": 22,
+                        "h_coeff": 0.12,
+                        "m_coeff": 0.22,
+                        "matrix": [
+                            0, 1, 0,
+                            1, 2, 1,
+                            0, 1, 0
+                        ]
+                    }
+                }
+            ],
+            "contrast": [
+                {
+                    "gain": 1,
+                    "value": 117
+                },
+                {
+                    "gain": 4,
+                    "value": 115
+                },
+                {
+                    "gain": 8,
+                    "value": 112
+                },
+                {
+                    "gain": 12,
+                    "value": 109
+                }
+            ]
+        },
+        "ian": {
+            "luma": {
+                "ae": {
+                    "weight": [
+                        1, 1, 1, 1, 1,
+                        1, 2, 2, 2, 1,
+                        1, 2, 3, 2, 1,
+                        1, 2, 2, 2, 1,
+                        1, 1, 1, 1, 1
+                    ]
+                }
+            }
+        },
+        "acc": {
+            "saturation": [
+                {
+                    "color_temp": 0,
+                    "value": 114
+                }
+            ],
+            "ccm": {
+                "low_luma": {
+                    "luma_env": "ae.luma.avg",
+                    "threshold": 55,
+                    "matrix": [
+                        1.0, 0.0, 0.0,
+                        0.0, 1.0, 0.0,
+                        0.0, 0.0, 1.0
+                    ]
+                },
+                "table": [
+                    {
+                        "color_temp": 0,
+                        "matrix": [
+                            2.0, -0.5459, -0.4541,
+                            -0.4751, 1.7696, -0.2945,
+                            -0.2002, -0.7998, 2.0
+                        ]
+                    }
+                ]
+            }
+        }
+    }
+}

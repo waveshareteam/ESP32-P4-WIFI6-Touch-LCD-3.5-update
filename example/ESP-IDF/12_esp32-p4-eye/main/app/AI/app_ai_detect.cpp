@@ -29,12 +29,9 @@ static const char *TAG = "app_ai_detect";
 #define ALIGN_UP(num, align)    (((num) + ((align) - 1)) & ~((align) - 1))
 
 static esp_painter_handle_t painter = NULL;
-
 static pipeline_handle_t feed_pipeline;
 static pipeline_handle_t detect_pipeline;
-
 static TaskHandle_t detect_task_handle = NULL;
-
 static PedestrianDetect *ped_detect = NULL;
 static HumanFaceDetect *hum_detect = NULL;
 static COCODetect *coco_od_detect = NULL;
@@ -70,6 +67,100 @@ static void rgb565_center_crop_resize_nn(const uint16_t *src, int src_w, int src
 static inline int map_coord_detect_to_screen(int v, int crop_origin, int crop_size, int detect_size)
 {
     return crop_origin + (v * crop_size) / detect_size;
+}
+
+static inline uint16_t maybe_swap_rgb565(uint16_t color, bool swap)
+{
+    if (swap) {
+        return ((color & 0xFF) << 8) | ((color >> 8) & 0xFF);
+    }
+    return color;
+}
+
+static inline uint16_t painter_color_to_rgb565(esp_painter_color_t color)
+{
+    switch (color) {
+    case ESP_PAINTER_COLOR_RED:
+        return RGB565(255, 0, 0);
+    case ESP_PAINTER_COLOR_GREEN:
+        return RGB565(0, 255, 0);
+    case ESP_PAINTER_COLOR_BLUE:
+        return RGB565(0, 0, 255);
+    case ESP_PAINTER_COLOR_WHITE:
+        return RGB565(255, 255, 255);
+    case ESP_PAINTER_COLOR_BLACK:
+        return RGB565(0, 0, 0);
+    case ESP_PAINTER_COLOR_YELLOW:
+    default:
+        return RGB565(255, 255, 0);
+    }
+}
+
+static void draw_char_rotated_90(uint16_t *rgb_buf, int width, int height, int x, int y, const esp_painter_basic_font_t *font,
+                                 esp_painter_color_t color, char c, int box_l, int box_t, int box_r, int box_b)
+{
+    if (!font || !rgb_buf || c < 32 || c > 127) {
+        return;
+    }
+
+    const int bytes_per_row = ((int)font->width + 7) / 8;
+    const uint8_t *char_bitmap = font->bitmap + (c - 32) * font->height * bytes_per_row;
+    const uint16_t rgb565_color = maybe_swap_rgb565(painter_color_to_rgb565(color), true);
+
+    for (int dy = 0; dy < (int)font->height; ++dy) {
+        for (int dx = 0; dx < (int)font->width; ++dx) {
+            uint8_t byte = char_bitmap[dy * bytes_per_row + (dx / 8)];
+            if (byte & (0x80 >> (dx % 8))) {
+                int dst_x = x + ((int)font->height - 1 - dy);
+                int dst_y = y + dx;
+                if (dst_x < box_l || dst_x > box_r || dst_y < box_t || dst_y > box_b) {
+                    continue;
+                }
+                if (dst_x < 0 || dst_x >= width || dst_y < 0 || dst_y >= height) {
+                    continue;
+                }
+                rgb_buf[dst_y * width + dst_x] = rgb565_color;
+            }
+        }
+    }
+}
+
+static void draw_label_left_bottom_vertical_rotated(uint16_t *rgb_buf, int width, int height, const std::vector<int> &box, const char *label)
+{
+    if (!label || box.size() < 4) {
+        return;
+    }
+
+    const esp_painter_basic_font_t *font = &esp_painter_basic_font_20;
+    const int margin = 4;
+    const int label_len = (int) strlen(label);
+    const int char_w_rot = (int)font->height;
+    const int char_h_rot = (int)font->width;
+    const int box_l = box[0] + margin;
+    const int box_t = box[1] + margin;
+    const int box_r = box[2] - margin - 1;
+    const int box_b = box[3] - margin - 1;
+
+    if (box_r < box_l || box_b < box_t) {
+        return;
+    }
+
+    if (char_w_rot > (box_r - box_l + 1) || char_h_rot > (box_b - box_t + 1)) {
+        return;
+    }
+
+    int max_chars = (box_b - box_t + 1) / char_h_rot;
+    if (max_chars <= 0) {
+        return;
+    }
+
+    int draw_chars = (label_len < max_chars) ? label_len : max_chars;
+    int x = box_l;
+    int y = box_b - draw_chars * char_h_rot + 1;
+
+    for (int i = 0; i < draw_chars; ++i) {
+        draw_char_rotated_90(rgb_buf, width, height, x, y + i * char_h_rot, font, ESP_PAINTER_COLOR_YELLOW, label[i], box_l, box_t, box_r, box_b);
+    }
 }
 
 /**
@@ -315,16 +406,7 @@ esp_err_t app_coco_od_detect(uint16_t *data, int width, int height)
                 char label[64];
                 snprintf(label, sizeof(label), "%s", class_name);
                 
-                // Ensure text is displayed inside the bounding box at the top-left corner
-                int text_x = box[0] + 5;  // 5 pixels offset from left edge
-                int text_y = box[1] + 15; // 15 pixels offset from top edge
-                
-                // Use esp_painter to draw text
-                esp_painter_draw_string(painter, (uint8_t*)rgb_buf, 
-                                        width * height * 2,
-                                        text_x, text_y, NULL, 
-                                        ESP_PAINTER_COLOR_YELLOW, 
-                                        label);
+                draw_label_left_bottom_vertical_rotated(rgb_buf, width, height, box, label);
             }
         }
     }
