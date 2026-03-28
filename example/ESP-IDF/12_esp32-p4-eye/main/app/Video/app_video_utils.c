@@ -19,7 +19,6 @@ static ppa_client_handle_t ppa_srm_handle = NULL;
 static jpeg_encoder_handle_t jpeg_handle;
 static SemaphoreHandle_t ppa_srm_mutex = NULL;
 
-static int scale_level_res[SCALE_LEVELS] = {960, 480, 240, 120};
 static const uint32_t adj_resolution_width[SCALE_LEVELS] = {1920, 960, 480, 240};
 static const uint32_t adj_resolution_height[SCALE_LEVELS] = {1080, 540, 270, 135};
 
@@ -74,7 +73,7 @@ esp_err_t app_video_utils_init(void)
 
     // Initialize JPEG encoder
     jpeg_encode_engine_cfg_t encode_eng_cfg = {
-        .timeout_ms = 70,
+        .timeout_ms = 300,
     };
 
     ret = jpeg_new_encoder_engine(&encode_eng_cfg, &jpeg_handle);
@@ -349,10 +348,15 @@ esp_err_t app_image_encode_jpeg(
     }
 
     // Configure JPEG encoding
+    uint8_t effective_quality = quality;
+    if (effective_quality > 100) {
+        effective_quality = 100;
+    }
+
     jpeg_encode_cfg_t enc_config = {
         .src_type = JPEG_ENCODE_IN_FORMAT_RGB565,
         .sub_sample = JPEG_DOWN_SAMPLING_YUV420,
-        .image_quality = quality,
+        .image_quality = effective_quality,
         .width = width,
         .height = height,
     };

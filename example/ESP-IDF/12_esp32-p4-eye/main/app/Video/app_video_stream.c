@@ -624,7 +624,6 @@ static void camera_video_frame_operation(uint8_t *camera_buf, uint8_t camera_buf
                                         size_t camera_buf_len)
 {
     static uint32_t ai_frame_seq = 0;
-    static uint32_t video_frame_seq = 0;
     int scale_level = app_extra_get_magnification_factor();
     ui_page_t current_page = ui_extra_get_current_page();
 
@@ -743,13 +742,7 @@ static void camera_video_frame_operation(uint8_t *camera_buf, uint8_t camera_buf
         } 
         // Handle video request
         else if (camera_state.flags.is_take_video && current_page == UI_PAGE_VIDEO_MODE) {
-            video_frame_seq++;
-
             while (true) {
-                if ((video_frame_seq & 0x1u) != 0) {
-                    break;
-                }
-
                 bool can_submit = false;
                 portENTER_CRITICAL(&media_worker_mux);
                 can_submit = (media_worker_task_handle != NULL) && (!media_worker_in_flight);

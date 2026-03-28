@@ -33,11 +33,11 @@
 
 /* Constants */
 #define ALIGN_UP(num, align)       (((num) + ((align) - 1)) & ~((align) - 1))
-#define JPEG_VIDEO_QUALITY         244            // JPEG quality setting
-#define CROP_PHOTO_WIDTH           1280
-#define CROP_PHOTO_HEIGHT          960
-#define VIDEO_RECORD_WIDTH         1280
-#define VIDEO_RECORD_HEIGHT        960
+#define JPEG_VIDEO_QUALITY         40             // JPEG quality setting
+#define CROP_PHOTO_WIDTH           960
+#define CROP_PHOTO_HEIGHT          1280
+#define VIDEO_RECORD_WIDTH         960
+#define VIDEO_RECORD_HEIGHT        1280
 #define FILE_SLICE_DURATION        600000
 #define VIDEO_BUF_MULTIPLIER       10
 #define VIDEO_FRAME_RATE           30
@@ -45,7 +45,7 @@
 #define REC_AUDIO_CHANNEL          2
 #define REC_AUDIO_BITS_PER_SAMPLE  16
 #define AUDIO_VIDEO_SYNC_THRESHOLD 100          // Maximum allowed A/V sync drift in ms
-#define VIDEO_FRAME_INTERVAL       (1000/VIDEO_FRAME_RATE) // Time in ms between frames at desired FPS
+#define VIDEO_FRAME_INTERVAL       (1000 / VIDEO_FRAME_RATE) // Time in ms between frames at desired FPS
 #define MIN_VIDEO_FRAME_INTERVAL   20           // Minimum interval between frames in ms to prevent timestamp jumps
 
 // Dynamic audio offset calculation instead of fixed offset
@@ -224,12 +224,6 @@ esp_err_t take_and_save_video(uint8_t *camera_buf, uint32_t width, uint32_t heig
         pre_handle_buf = camera_buf;
     }
 
-    if (photo_buf == NULL) {
-        ESP_LOGE(TAG, "Photo buffer not initialized");
-        ret = ESP_FAIL;
-        goto cleanup;
-    }
-
     if (photo_width > SHARED_PHOTO_BUF_WIDTH || photo_height > SHARED_PHOTO_BUF_HEIGHT) {
         ESP_LOGW(TAG, "Resolution %ldx%ld exceeds shared buffer capacity (1280x960), adjusting", 
                  photo_width, photo_height);
@@ -237,18 +231,34 @@ esp_err_t take_and_save_video(uint8_t *camera_buf, uint32_t width, uint32_t heig
         photo_height = (photo_height > SHARED_PHOTO_BUF_HEIGHT) ? SHARED_PHOTO_BUF_HEIGHT : photo_height;
     }
 
-    ret = app_image_process_scale_crop(
-        pre_handle_buf, width, height,
-        CROP_PHOTO_WIDTH, CROP_PHOTO_HEIGHT,
-        photo_buf, photo_width, photo_height,
-        ALIGN_UP(photo_width * photo_height * 2, data_cache_line_size),
-        PPA_SRM_ROTATION_ANGLE_0
-    );
-    if (ret != ESP_OK) {
-        ESP_LOGE(TAG, "Failed to scale image: 0x%x", ret);
-        goto cleanup;
+    bool use_direct_encode = (magnification_factor <= 1) &&
+                             (width == photo_width) &&
+                             (height == photo_height) &&
+                             (CROP_PHOTO_WIDTH == photo_width) &&
+                             (CROP_PHOTO_HEIGHT == photo_height);
+
+    if (use_direct_encode) {
+        pic_buf = pre_handle_buf;
+    } else {
+        if (photo_buf == NULL) {
+            ESP_LOGE(TAG, "Photo buffer not initialized");
+            ret = ESP_FAIL;
+            goto cleanup;
+        }
+
+        ret = app_image_process_scale_crop(
+            pre_handle_buf, width, height,
+            CROP_PHOTO_WIDTH, CROP_PHOTO_HEIGHT,
+            photo_buf, photo_width, photo_height,
+            ALIGN_UP(photo_width * photo_height * 2, data_cache_line_size),
+            PPA_SRM_ROTATION_ANGLE_90
+        );
+        if (ret != ESP_OK) {
+            ESP_LOGE(TAG, "Failed to scale image: 0x%x", ret);
+            goto cleanup;
+        }
+        pic_buf = photo_buf;
     }
-    pic_buf = photo_buf;
 
     ret = app_image_encode_jpeg(
         pic_buf,
@@ -456,7 +466,7 @@ esp_err_t app_video_record_init(void)
     app_video_stream_get_scaled_camera_buf(&scaled_camera_buf, &scaled_camera_buf_size);
     app_video_stream_get_jpg_buf(&jpg_buf, &rx_buffer_size);
 
-    // Get shared photo buffer from video stream module (1280x720)
+    // Get shared photo buffer from video stream module (1280x960)
     app_video_stream_get_shared_photo_buf(&photo_buf, &photo_buf_size);
     if (photo_buf == NULL) {
         ESP_LOGE(TAG, "Failed to get shared photo buffer from video stream");
