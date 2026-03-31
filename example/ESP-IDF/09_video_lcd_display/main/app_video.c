@@ -81,10 +81,7 @@ int app_video_open(char *dev, video_fmt_t init_fmt)
     struct v4l2_format default_format;
     struct v4l2_capability capability;
     const int type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
-
-    struct v4l2_ext_controls controls;
-    struct v4l2_ext_control control[1];
-
+    
     int fd = open(dev, O_RDONLY);
     if (fd < 0) {
         ESP_LOGE(TAG, "Open video failed");
@@ -128,25 +125,6 @@ int app_video_open(char *dev, video_fmt_t init_fmt)
             goto exit_0;
         }
     }
-
-    controls.ctrl_class = V4L2_CTRL_CLASS_USER;
-    controls.count      = 1;
-    controls.controls   = control;
-    control[0].id       = V4L2_CID_VFLIP;
-    control[0].value    = 1;
-    if (ioctl(fd, VIDIOC_S_EXT_CTRLS, &controls) != 0) {
-        ESP_LOGW(TAG, "failed to mirror the frame horizontally and skip this step");
-    }
-
-    controls.ctrl_class = V4L2_CTRL_CLASS_USER;
-    controls.count      = 1;
-    controls.controls   = control;
-    control[0].id       = V4L2_CID_HFLIP;
-    control[0].value    = 1;
-    if (ioctl(fd, VIDIOC_S_EXT_CTRLS, &controls) != 0) {
-        ESP_LOGW(TAG, "failed to mirror the frame horizontally and skip this step");
-    }
-
     return fd;
 exit_0:
     close(fd);

@@ -417,6 +417,7 @@ esp_err_t bsp_display_new(const bsp_display_config_t *config, esp_lcd_panel_hand
 
     return ret;
 }
+
 esp_err_t bsp_display_new_with_handles(const bsp_display_config_t *config, bsp_lcd_handles_t *ret_handles)
 {
     esp_err_t ret = ESP_OK;
@@ -428,7 +429,7 @@ esp_err_t bsp_display_new_with_handles(const bsp_display_config_t *config, bsp_l
         .miso_io_num = GPIO_NUM_NC,
         .quadwp_io_num = GPIO_NUM_NC,
         .quadhd_io_num = GPIO_NUM_NC,
-        .max_transfer_sz = (BSP_LCD_H_RES * BSP_LCD_V_RES),
+        .max_transfer_sz = (BSP_LCD_H_RES * BSP_LCD_V_RES * (BSP_LCD_BITS_PER_PIXEL / 8)),
     };
     ESP_ERROR_CHECK(spi_bus_initialize(SPI2_HOST, &buscfg, SPI_DMA_CH_AUTO));
 
@@ -459,7 +460,7 @@ esp_err_t bsp_display_new_with_handles(const bsp_display_config_t *config, bsp_l
     ESP_GOTO_ON_ERROR(esp_lcd_panel_init(panel_handle), err, TAG, "LCD panel init failed");
     ESP_ERROR_CHECK(esp_lcd_panel_invert_color(panel_handle, true));
     esp_lcd_panel_disp_on_off(panel_handle, true);
-    ESP_ERROR_CHECK(esp_lcd_panel_mirror(panel_handle, true, false));//mirror x axis
+    ESP_ERROR_CHECK(esp_lcd_panel_mirror(panel_handle, false, false));//mirror x axis
 
     /* Return all handles */
     ret_handles->io = io_handle;
